@@ -1,3 +1,5 @@
+import Foundation
+
 typealias AccountID = String
 // TODO: (mattt) Be more clever about StringLiteralConvertible struct that asserts length constraints?
 
@@ -141,5 +143,31 @@ struct MeInfo {
 extension MeInfo {
     static func example() -> MeInfo {
         return MeInfo(accountID: "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc", name: Name.example(), email: "franz@dropbox.com", country: "US", locale: "en", referralLink: "https://db.tt/ZITNuhtI", space: Space.example(), team: Team.example(), isPaired: true)
+    }
+}
+
+// MARK: - Router
+
+extension Router {
+    enum Users {
+        ///
+        case Info(accountId: AccountID)
+
+        ///
+        case InfoMe
+    }
+}
+
+// MARK: - Client
+
+extension Client {
+    /// Get information about a user's account.
+    func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
+        // ...
+    }
+
+    /// Get information about the authorized user's account.
+    func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
+        // ...
     }
 }
