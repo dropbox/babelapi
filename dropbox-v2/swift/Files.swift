@@ -1,4 +1,5 @@
 import Foundation
+import Alamofire
 
 struct PathTarget {
     // Path from root. Should be an empty string for root.
@@ -95,37 +96,40 @@ extension Router {
     }
 }
 
+extension Router.Files: URLRequestConvertible {
+    var URLRequest: NSURLRequest {
+        return NSURLRequest() // TODO
+    }
+}
+
 // MARK: - Client
 
 extension Client {
-
-    public func download(path: String, rev: String? = nil, range: Range<Int>? = nil, destination: (NSURL, NSHTTPURLResponse) -> (NSURL), progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<NSURL>) -> Void) {
-        manager.download(Router.FilesAndMetadata.Get(root: root, path: path, rev: rev, range: range), destination: destination)
+    func download(path: String, rev: String? = nil, range: Range<Int>? = nil, destination: (NSURL, NSHTTPURLResponse) -> (NSURL), progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<NSURL>) -> Void) {
+        manager.download(Router.Files.Download(FileTarget(path: path, rev: rev)), destination: destination)
             .validate()
             .response { (request, response, URL, error) -> Void in
-//            completionHandler(URL != nil ? Result<NSURL>.Success(URL! as NSURL) : Result<NSURL>.Failure)
+
             }
     }
 
-    // TODO: Transparently use chunked upload if payload is over maximum
-    public func upload(path: String, file: NSURL, overwrite: Bool? = nil, parentRev: Rev? = nil, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
-        upload(path, stream: NSInputStream(URL: file)!, overwrite: overwrite, parentRev: parentRev, progress: progress, completionHandler: completionHandler)
+    func upload(path: String, file: NSURL, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+        upload(path, stream: NSInputStream(URL: file)!, conflictPolicy: conflictPolicy, progress: progress, completionHandler: completionHandler)
     }
 
-    public func upload(path: String, data: NSData, overwrite: Bool? = nil, parentRev: Rev? = nil, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
-        upload(path, stream: NSInputStream(data: data), overwrite: overwrite, parentRev: parentRev, progress: progress, completionHandler: completionHandler)
+    func upload(path: String, data: NSData, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+        upload(path, stream: NSInputStream(data: data), conflictPolicy: conflictPolicy, progress: progress, completionHandler: completionHandler)
     }
 
-    private func upload(path: String, stream: NSInputStream, overwrite: Bool? = nil, parentRev: Rev? = nil, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
-        manager.upload(Router.FilesAndMetadata.Put(root: root, path: path, overwrite: overwrite, parentRev: parentRev, locale: locale), stream: stream)
-            .progress(closure: progress)
-            .responseResult(completionHandler)
+    func upload(path: String, stream: NSInputStream, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+        manager.upload(Router.Files.Upload(path: path, mode: conflictPolicy, appendTo: nil, autorename: nil, clientModifiedUTC: nil, mute: nil), stream: stream)
+                .validate()
+                .progress(closure: progress)
     }
 
-    // TODO: Fix relationship between path and metadata
-    public func metadata(path: String, fileLimit: Int? = nil, hash: String? = nil, list: Bool? = nil, includeDeleted: Bool? = nil, rev: Rev? = nil, completionHandler: (Result<Metadata>) -> Void) {
-        manager.request(Router.FilesAndMetadata.Metadata(root: root, path: path, fileLimit: fileLimit, hash: hash, list: list, includeDeleted: includeDeleted, rev: rev, locale: locale))
-            .validate()
-            .responseResult(completionHandler)
+    func metadata(path: String, fileLimit: Int? = nil, hash: String? = nil, list: Bool? = nil, includeDeleted: Bool? = nil, rev: String? = nil, completionHandler: (Result<Metadata>) -> Void) {
+        let fileTarget = FileTarget(path: path, rev: rev)
+        manager.request(Router.Files.GetMetadata(fileTarget))
+                .validate()
     }
 }

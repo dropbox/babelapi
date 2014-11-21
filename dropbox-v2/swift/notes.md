@@ -1,5 +1,8 @@
 - Reserved keywords, like `private`, must be backtick-escaped.
 - Struct fields are `snake_cased`, but must be `llamaCased`
+- Documentation should be specific about `country` being ISO 3166-1 codes
+- Documentation should be clear about use of ISO 639 language code or IETF / BCP 47 language tags for `locale`
+- Documentation for UploadAppend route is duplicate of UploadStart
 - Uncertain whether Babel should specify URL type, and if Swift implementation should type as `NSURL`.
 - Typed errors feel incomplete. Conventional pattern would be to use HTTP status codes as sufficient indication of type of failure, with error messages (localized from `Accept-Language` header) for end-user. Babel specification enumerates possible error types, but as a consequence of being protocol-agnostic, does not clarify how an implementor might interpret results an actual server response.
 - Previously-discussed pattern of enumerated routes has benefit of encoding API contracts independent of communication protocol. The emergent pattern, therefore, would be to generate data structures and routes from specification, followed by extensions for JSON / XML / etc. serialization and REST / RPC / etc. protocol.

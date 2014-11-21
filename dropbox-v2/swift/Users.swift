@@ -1,4 +1,5 @@
 import Foundation
+import Alamofire
 
 typealias AccountID = String
 // TODO: (mattt) Be more clever about StringLiteralConvertible struct that asserts length constraints?
@@ -146,6 +147,53 @@ extension MeInfo {
     }
 }
 
+// MARK: - ResponseResultSerializable
+
+extension Space: ResponseResultSerializable {
+    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+        self.quota = representation["quota"] as UInt64
+        self.`private` = representation["private"] as UInt64
+        self.shared = representation["shared"] as UInt64
+        self.datastores = representation["datastores"] as UInt64
+    }
+}
+
+extension Team: ResponseResultSerializable {
+    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+        self.id = representation["id"] as String
+        self.name = representation["name"] as String
+    }
+}
+
+extension Name: ResponseResultSerializable {
+    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+        self.givenName = representation["given_name"] as String
+        self.surname = representation["surname"] as String
+        self.familiarName = representation["familiar_name"] as String
+        self.displayName = representation["display_name"] as String
+    }
+}
+
+extension BasicAccountInfo: ResponseResultSerializable {
+    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+        self.accountID = representation["account_id"] as String
+        self.name = Name(response: response, representation: representation["name"] as [String: Any])
+    }
+}
+
+extension MeInfo: ResponseResultSerializable {
+    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+        self.accountID = representation["id"] as String
+        self.name = Name(response: response, representation: representation["name"] as [String: Any])
+        self.email = representation["email"] as String
+        self.country = representation["country"] as? String
+        self.locale = representation["locale"] as String
+        self.referralLink = representation["referral_link"] as String
+        self.space = Space(response: response, representation: representation["space"] as [String: Any])
+        self.team = Team(response: response, representation: representation["team"] as [String: Any])
+        self.isPaired = representation["is_paired"] as Bool    }
+}
+
 // MARK: - Router
 
 extension Router {
@@ -158,16 +206,26 @@ extension Router {
     }
 }
 
+extension Router.Users: URLRequestConvertible {
+    var URLRequest: NSURLRequest {
+        return NSURLRequest()
+    }
+}
+
 // MARK: - Client
 
 extension Client {
     /// Get information about a user's account.
     func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
-        // ...
+        manager.request(Router.Users.Info(accountId: accountID))
+            .validate()
+            .responseResult(completionHandler)
     }
 
     /// Get information about the authorized user's account.
     func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
-        // ...
+        manager.request(Router.Users.InfoMe)
+            .validate()
+            .responseResult(completionHandler)
     }
 }
