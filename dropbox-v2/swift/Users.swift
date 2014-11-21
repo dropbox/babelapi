@@ -1,5 +1,3 @@
-/// Users
-
 typealias AccountID = String
 // TODO: (mattt) Be more clever about StringLiteralConvertible struct that asserts length constraints?
 
@@ -143,45 +141,5 @@ struct MeInfo {
 extension MeInfo {
     static func example() -> MeInfo {
         return MeInfo(accountID: "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc", name: Name.example(), email: "franz@dropbox.com", country: "US", locale: "en", referralLink: "https://db.tt/ZITNuhtI", space: Space.example(), team: Team.example(), isPaired: true)
-    }
-}
-
-/*
-// Swift does not have an direct `union` equivalent. Again, there are several options:
-
-// Generic closed `Either` type:
-enum Either<T, U> {
-    case Left(T)
-    case Right(U)
-}
-
-// Non-generic closed `Either` type:
-enum EitherAccountInfo {
-    case Basic(BasicAccountInfo)
-    case Me(MeInfo)
-}
-
-// ...or the aforementioned `AccountInfo` protocol approach.
-*/
-
-public enum Result<T> {
-    case Success(T)
-    case Failure
-}
-
-struct UserRouter {
-    enum Routes {
-        case Info(accountId: AccountID)
-        case InfoMe
-    }
-
-    /// Get information about a user's account.
-    func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
-        // ...
-    }
-
-    /// Get information about the authorized user's account.
-    func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
-        // ...
     }
 }
