@@ -153,26 +153,32 @@ public struct MeInfo {
     }
 }
 
+public enum AccountInfo {
+    case Me(MeInfo)
+    case Teammate(BasicAccountInfo)
+    case User(BasicAccountInfo)
+}
+
 // MARK: - ResponseResultSerializable
 
 extension Space: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
-        self.quota = representation["quota"] as UInt64
-        self.`private` = representation["private"] as UInt64
-        self.shared = representation["shared"] as UInt64
-        self.datastores = representation["datastores"] as UInt64
+    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+        self.quota = UInt64(representation["quota"]!.integerValue)
+        self.`private` = UInt64(representation["private"]!.integerValue)
+        self.shared = UInt64(representation["shared"]!.integerValue)
+        self.datastores = UInt64(representation["datastores"]!.integerValue)
     }
 }
 
 extension Team: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.id = representation["id"] as String
         self.name = representation["name"] as String
     }
 }
 
 extension Name: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.givenName = representation["given_name"] as String
         self.surname = representation["surname"] as String
         self.familiarName = representation["familiar_name"] as String
@@ -181,23 +187,26 @@ extension Name: ResponseResultSerializable {
 }
 
 extension BasicAccountInfo: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.accountID = representation["account_id"] as String
-        self.name = Name(response: response, representation: representation["name"] as [String: Any])
+        self.name = Name(response: response, representation: representation["name"] as NSDictionary)
     }
 }
 
 extension MeInfo: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
-        self.accountID = representation["id"] as String
-        self.name = Name(response: response, representation: representation["name"] as [String: Any])
+    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+        self.accountID = representation["account_id"] as String
+        self.name = Name(response: response, representation: representation["name"] as NSDictionary)
         self.email = representation["email"] as String
         self.country = representation["country"] as? String
         self.locale = representation["locale"] as String
         self.referralLink = representation["referral_link"] as String
-        self.space = Space(response: response, representation: representation["space"] as [String: Any])
-        self.team = Team(response: response, representation: representation["team"] as [String: Any])
-        self.isPaired = representation["is_paired"] as Bool    }
+        self.space = Space(response: response, representation: representation["space"] as NSDictionary)
+        if !(representation["team"] is NSNull) {
+            self.team = Team(response: response, representation: representation["team"] as NSDictionary)
+        }
+        self.isPaired = representation["is_paired"]!.boolValue!
+    }
 }
 
 // MARK: - Router
@@ -212,9 +221,20 @@ extension Router {
     }
 }
 
-extension Router.Users: URLRequestConvertible {
+extension Router.Users: URLStringConvertible, URLRequestConvertible {
+    public var URLString: String {
+        switch self {
+        case .Info(accountId: let accountId):
+            return Router.baseURL.URLByAppendingPathComponent("users/info/\(accountId)").absoluteString!
+        case .InfoMe:
+            return Router.baseURL.URLByAppendingPathComponent("users/info/me").absoluteString!
+        }
+    }
+
     public var URLRequest: NSURLRequest {
-        return NSURLRequest()
+        let mutableURLRequest = NSMutableURLRequest(URL: NSURL(string: URLString)!)
+        mutableURLRequest.HTTPMethod = "POST"
+        return ParameterEncoding.JSON.encode(mutableURLRequest, parameters: [:]).0
     }
 }
 
