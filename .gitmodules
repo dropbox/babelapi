@@ -1,0 +1,3 @@
+[submodule "dropbox-v2/swift/Vendor/Alamofire"]
+	path = dropbox-v2/swift/Vendor/Alamofire
+	url = git@github.com:Alamofire/Alamofire.git

@@ -1,29 +1,29 @@
 import Foundation
 import Alamofire
 
-struct PathTarget {
+public struct PathTarget {
     // Path from root. Should be an empty string for root.
-    let path: String
+    public let path: String
 }
 
 // NOTE: Again, uncertain how best to handle struct extensions
-struct FileTarget {
+public struct FileTarget {
     // Path from root. Should be an empty string for root.
-    let path: String
+    public let path: String
 
     // Revision of target file.
-    let rev: String?
+    public let rev: String?
 }
 
 // MARK: -
 
-struct FileInfo {
+public struct FileInfo {
     /// Name of file.
-    let name: String
+    public let name: String
 }
 
 /// The action to take when a file path conflict exists.
-enum ConflictPolicy {
+public enum ConflictPolicy {
     /// On a conflict, the upload is rejected.
     case Add
 
@@ -37,11 +37,11 @@ enum ConflictPolicy {
 // MARK: -
 
 /// A folder resource
-struct Folder {
+public struct Folder {
 
 }
 
-enum Metadata {
+public enum Metadata {
     ///
     case File
 
@@ -49,18 +49,18 @@ enum Metadata {
     case Folder
 }
 
-struct Entry {
+public struct Entry {
     ///
-    let metadata: Metadata
+    public let metadata: Metadata
 
     ///
-    let name: String
+    public let name: String
 }
 
 // MARK: - Router
 
 extension Router {
-    enum Files {
+    public enum Files {
         /// Download a file in a user's Dropbox.
         case Download(FileTarget)
         /*
@@ -97,7 +97,7 @@ extension Router {
 }
 
 extension Router.Files: URLRequestConvertible {
-    var URLRequest: NSURLRequest {
+    public var URLRequest: NSURLRequest {
         return NSURLRequest() // TODO
     }
 }
@@ -105,7 +105,7 @@ extension Router.Files: URLRequestConvertible {
 // MARK: - Client
 
 extension Client {
-    func download(path: String, rev: String? = nil, range: Range<Int>? = nil, destination: (NSURL, NSHTTPURLResponse) -> (NSURL), progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<NSURL>) -> Void) {
+    public func download(path: String, rev: String? = nil, range: Range<Int>? = nil, destination: (NSURL, NSHTTPURLResponse) -> (NSURL), progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<NSURL>) -> Void) {
         manager.download(Router.Files.Download(FileTarget(path: path, rev: rev)), destination: destination)
             .validate()
             .response { (request, response, URL, error) -> Void in
@@ -113,21 +113,21 @@ extension Client {
             }
     }
 
-    func upload(path: String, file: NSURL, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+    public func upload(path: String, file: NSURL, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
         upload(path, stream: NSInputStream(URL: file)!, conflictPolicy: conflictPolicy, progress: progress, completionHandler: completionHandler)
     }
 
-    func upload(path: String, data: NSData, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+    public func upload(path: String, data: NSData, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
         upload(path, stream: NSInputStream(data: data), conflictPolicy: conflictPolicy, progress: progress, completionHandler: completionHandler)
     }
 
-    func upload(path: String, stream: NSInputStream, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
+    public func upload(path: String, stream: NSInputStream, conflictPolicy: ConflictPolicy, progress: ((Int64, Int64, Int64) -> Void)?, completionHandler: (Result<Metadata>) -> Void) {
         manager.upload(Router.Files.Upload(path: path, mode: conflictPolicy, appendTo: nil, autorename: nil, clientModifiedUTC: nil, mute: nil), stream: stream)
                 .validate()
                 .progress(closure: progress)
     }
 
-    func metadata(path: String, fileLimit: Int? = nil, hash: String? = nil, list: Bool? = nil, includeDeleted: Bool? = nil, rev: String? = nil, completionHandler: (Result<Metadata>) -> Void) {
+    public func metadata(path: String, fileLimit: Int? = nil, hash: String? = nil, list: Bool? = nil, includeDeleted: Bool? = nil, rev: String? = nil, completionHandler: (Result<Metadata>) -> Void) {
         let fileTarget = FileTarget(path: path, rev: rev)
         manager.request(Router.Files.GetMetadata(fileTarget))
                 .validate()

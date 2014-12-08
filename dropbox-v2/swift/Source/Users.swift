@@ -1,69 +1,69 @@
 import Foundation
 import Alamofire
 
-typealias AccountID = String
+public typealias AccountID = String
 // TODO: (mattt) Be more clever about StringLiteralConvertible struct that asserts length constraints?
 
 /// The space quota info for a user.
-struct Space {
+public struct Space {
     /// The user's total quota allocation (bytes).
-    let quota: UInt64
+    public let quota: UInt64
 
     /// The user's used quota outside of shared folders (bytes).
     // NOTE: Reserved keywords must be escaped with backticks.
-    let `private`: UInt64
+    public let `private`: UInt64
 
     /// The user's used quota in shared folders (bytes).
-    let shared: UInt64
+    public let shared: UInt64
 
     /// The user's used quota in datastores (bytes).
-    let datastores: UInt64
-}
+    public let datastores: UInt64
 
-// NOTE: Examples are implemented here as static constructors, but would be more appropriate as test fixtures
-extension Space {
-    static func example() -> Space {
-        return Space(quota: 1000000, `private`: 1000, shared: 500, datastores: 42)
+    public init(quota: UInt64, `private`: UInt64, shared: UInt64, datastores: UInt64) {
+        self.quota = quota
+        self.`private` = `private`
+        self.shared = shared
+        self.datastores = datastores
     }
 }
 
 // MARK: -
 
 /// Information about a team.
-struct Team {
+public struct Team {
     /// The team's unique ID.
-    let id: String
+    public let id: String
 
     /// The name of the team.
-    let name: String
-}
+    public let name: String
 
-extension Team {
-    static func example() -> Team {
-        return Team(id: "dbtid:AAFdgehTzw7WlXhZJsbGCLePe8RvQGYDr-I", name: "Acme, Inc.")
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
     }
 }
 
 // MARK: -
 
 /// Contains several ways a name might be represented to make internationalization more convenient.
-struct Name {
+public struct Name {
     /// Also known as a first name.
-    let givenName: String
+    public let givenName: String
 
     /// Also known as a last name or family name.
-    let surname: String
+    public let surname: String
 
     /// Locale-dependent familiar name. Generally matches :field:`given_name` or :field:`display_name`.
-    let familiarName: String
+    public let familiarName: String
 
     /// A name that can be used directly to represent the name of a user's Dropbox account.
-    let displayName: String
-}
+    public let displayName: String
 
-extension Name {
-    static func example() -> Name {
-        return Name(givenName: "Franz", surname: "Ferdinand", familiarName: "Franz Ferdinand", displayName: "Franz Ferdinand (Personal)")
+    public init(givenName: String, surname: String, familiarName: String, displayName: String) {
+        self.givenName = givenName
+        self.surname = surname
+        self.familiarName = familiarName
+        self.displayName = displayName
     }
 }
 
@@ -101,56 +101,62 @@ struct MeInfo: AccountInfo {
 */
 
 /// Basic information about a user's account.
-struct BasicAccountInfo {
+public struct BasicAccountInfo {
     /// The user's unique Dropbox ID.
-    let accountID: AccountID
+    public let accountID: AccountID
 
     /// Details of a user's name.
-    let name: Name
+    public let name: Name
 }
 
 /// Information about a user's account.
-struct MeInfo {
+public struct MeInfo {
     /// The user's unique Dropbox ID.
-    let accountID: AccountID
+    public let accountID: AccountID
 
     /// Details of a user's name.
-    let name: Name
+    public let name: Name
 
     /// The user's e-mail address.
-    let email: String
+    public let email: String
 
     /// The user's two-letter country code, if available.
     // NOTE: Documentation should be specific about being ISO 3166-1 codes
-    let country: String?
+    public let country: String?
 
     /// The language setting that user specified.
     // NOTE: Documentation is unclear; is this ISO 639 language code or IETF / BCP 47 language tag?
-    let locale: String
+    public let locale: String
 
     /// The user's :link:`referral link https://www.dropbox.com/referrals`.
-    let referralLink: String
+    public let referralLink: String
 
     /// The user's quota.
-    let space: Space
+    public let space: Space
 
     /// If this account is a member of a team.
-    let team: Team?
+    public let team: Team?
 
     /// Whether the user has a personal and work account. If the authorized account is personal, then :field:`team` will always be :val:`Null`, but :field:`is_paired` will indicate if a work account is linked.
-    let isPaired: Bool
-}
+    public let isPaired: Bool
 
-extension MeInfo {
-    static func example() -> MeInfo {
-        return MeInfo(accountID: "dbid:AAH4f99T0taONIb-OurWxbNQ6ywGRopQngc", name: Name.example(), email: "franz@dropbox.com", country: "US", locale: "en", referralLink: "https://db.tt/ZITNuhtI", space: Space.example(), team: Team.example(), isPaired: true)
+    public init(accountID: AccountID, name: Name, email: String, country: String?, locale: String, referralLink: String, space: Space, team: Team?, isPaired: Bool) {
+        self.accountID = accountID
+        self.name = name
+        self.email = email
+        self.country = country
+        self.locale = locale
+        self.referralLink = referralLink
+        self.space = space
+        self.team = team
+        self.isPaired = isPaired
     }
 }
 
 // MARK: - ResponseResultSerializable
 
 extension Space: ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
         self.quota = representation["quota"] as UInt64
         self.`private` = representation["private"] as UInt64
         self.shared = representation["shared"] as UInt64
@@ -159,14 +165,14 @@ extension Space: ResponseResultSerializable {
 }
 
 extension Team: ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
         self.id = representation["id"] as String
         self.name = representation["name"] as String
     }
 }
 
 extension Name: ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
         self.givenName = representation["given_name"] as String
         self.surname = representation["surname"] as String
         self.familiarName = representation["familiar_name"] as String
@@ -175,14 +181,14 @@ extension Name: ResponseResultSerializable {
 }
 
 extension BasicAccountInfo: ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
         self.accountID = representation["account_id"] as String
         self.name = Name(response: response, representation: representation["name"] as [String: Any])
     }
 }
 
 extension MeInfo: ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: [String: Any]) {
+    public init(response: NSHTTPURLResponse, representation: [String: Any]) {
         self.accountID = representation["id"] as String
         self.name = Name(response: response, representation: representation["name"] as [String: Any])
         self.email = representation["email"] as String
@@ -197,7 +203,7 @@ extension MeInfo: ResponseResultSerializable {
 // MARK: - Router
 
 extension Router {
-    enum Users {
+    public enum Users {
         ///
         case Info(accountId: AccountID)
 
@@ -207,7 +213,7 @@ extension Router {
 }
 
 extension Router.Users: URLRequestConvertible {
-    var URLRequest: NSURLRequest {
+    public var URLRequest: NSURLRequest {
         return NSURLRequest()
     }
 }
@@ -216,14 +222,14 @@ extension Router.Users: URLRequestConvertible {
 
 extension Client {
     /// Get information about a user's account.
-    func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
+    public func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
         manager.request(Router.Users.Info(accountId: accountID))
             .validate()
             .responseResult(completionHandler)
     }
 
     /// Get information about the authorized user's account.
-    func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
+    public func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
         manager.request(Router.Users.InfoMe)
             .validate()
             .responseResult(completionHandler)

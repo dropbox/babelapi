@@ -1,7 +1,7 @@
 import Foundation
 import Alamofire
 
-class Client {
+public class Client {
     let manager: Alamofire.Manager
 
     init() {
@@ -11,17 +11,17 @@ class Client {
 
 // MARK: -
 
-enum Result<T> {
+public enum Result<T> {
     case Success(T)
     case Failure
 }
 
-protocol ResponseResultSerializable {
+public protocol ResponseResultSerializable {
     init(response: NSHTTPURLResponse, representation: [String: Any])
 }
 
 extension Alamofire.Request {
-    func responseResult<T: ResponseResultSerializable>(completionHandler: (Result<T>) -> Void) -> Self {
+    public func responseResult<T: ResponseResultSerializable>(completionHandler: (Result<T>) -> Void) -> Self {
         return response(serializer: Alamofire.Request.responseDataSerializer(), completionHandler: { (request, response, data, error) in
             if error != nil || response == nil || data == nil {
                 completionHandler(Result<T>.Failure)

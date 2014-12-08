@@ -1,6 +1,6 @@
 import Foundation
 import Alamofire
 
-struct Router {
+public struct Router {
     // ...
 }
