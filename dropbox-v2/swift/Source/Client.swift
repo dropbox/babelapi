@@ -27,7 +27,7 @@ public enum Result<T> {
 }
 
 public protocol ResponseResultSerializable {
-    init(response: NSHTTPURLResponse, representation: NSDictionary)
+    init?(response: NSHTTPURLResponse, representation: NSDictionary)
 }
 
 extension Alamofire.Request {
@@ -42,8 +42,11 @@ extension Alamofire.Request {
                 completionHandler(Result<T>.Failure)
             } else {
                 if let representation = NSJSONSerialization.JSONObjectWithData(data as NSData, options: NSJSONReadingOptions.AllowFragments, error: nil) as? NSDictionary {
-                    let object = T(response: response!, representation: representation)
-                    completionHandler(Result<T>.Success(object))
+                    if let object = T(response: response!, representation: representation) {
+                        completionHandler(Result<T>.Success(object))
+                    } else {
+                        completionHandler(Result<T>.Failure)
+                    }
                 } else {
                     completionHandler(Result<T>.Failure)
                 }

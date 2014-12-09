@@ -19,19 +19,41 @@ class DropboxTests: XCTestCase {
     }
 
     // MARK: -
+
+    func testGetInfo() {
+        let expectation = expectationWithDescription("getInfo")
+
+        let accountId = "dbid:AAApUbI47KUFkojkBTTEIdPftZSgOypGd6M"
+
+        client.getInfo(accountId) { (result) in
+            expectation.fulfill()
+
+            switch result {
+            case .Success(let .Me(info)):
+                XCTAssertEqual(info.accountID, "dbid:AAApUbI47KUFkojkBTTEIdPftZSgOypGd6M")
+                XCTAssertEqual(info.name.givenName, "Mattt")
+            default:
+                XCTFail()
+            }
+        }
+
+        waitForExpectationsWithTimeout(10) { (error) in
+            XCTAssertNil(error)
+        }
+    }
     
     func testGetInfoMe() {
-        let expectation = expectationWithDescription("getInfo")
+        let expectation = expectationWithDescription("getInfoMe")
 
         client.getInfoMe { (result) in
             expectation.fulfill()
 
             switch result {
-            case .Success(let info):
+            case .Success(let .Me(info)):
                 XCTAssertEqual(info.accountID, "dbid:AAApUbI47KUFkojkBTTEIdPftZSgOypGd6M")
                 XCTAssertEqual(info.name.givenName, "Mattt")
                 XCTAssertEqual(info.referralLink, "https://db.tt/0JcqM0yz")
-            case .Failure:
+            default:
                 XCTFail()
             }
         }

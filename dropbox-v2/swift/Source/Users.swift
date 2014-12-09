@@ -162,7 +162,7 @@ public enum AccountInfo {
 // MARK: - ResponseResultSerializable
 
 extension Space: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.quota = UInt64(representation["quota"]!.integerValue)
         self.`private` = UInt64(representation["private"]!.integerValue)
         self.shared = UInt64(representation["shared"]!.integerValue)
@@ -171,14 +171,14 @@ extension Space: ResponseResultSerializable {
 }
 
 extension Team: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.id = representation["id"] as String
         self.name = representation["name"] as String
     }
 }
 
 extension Name: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.givenName = representation["given_name"] as String
         self.surname = representation["surname"] as String
         self.familiarName = representation["familiar_name"] as String
@@ -187,25 +187,53 @@ extension Name: ResponseResultSerializable {
 }
 
 extension BasicAccountInfo: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.accountID = representation["account_id"] as String
-        self.name = Name(response: response, representation: representation["name"] as NSDictionary)
+        self.name = Name(response: response, representation: representation["name"] as NSDictionary)!
     }
 }
 
 extension MeInfo: ResponseResultSerializable {
-    public init(response: NSHTTPURLResponse, representation: NSDictionary) {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
         self.accountID = representation["account_id"] as String
-        self.name = Name(response: response, representation: representation["name"] as NSDictionary)
+        self.name = Name(response: response, representation: representation["name"] as NSDictionary)!
         self.email = representation["email"] as String
         self.country = representation["country"] as? String
         self.locale = representation["locale"] as String
         self.referralLink = representation["referral_link"] as String
-        self.space = Space(response: response, representation: representation["space"] as NSDictionary)
+        self.space = Space(response: response, representation: representation["space"] as NSDictionary)!
         if !(representation["team"] is NSNull) {
-            self.team = Team(response: response, representation: representation["team"] as NSDictionary)
+            self.team = Team(response: response, representation: representation["team"] as NSDictionary)!
         }
         self.isPaired = representation["is_paired"]!.boolValue!
+    }
+}
+
+extension AccountInfo: ResponseResultSerializable {
+    public init?(response: NSHTTPURLResponse, representation: NSDictionary) {
+        if let me = representation["me"] as? NSDictionary {
+            if let meInfo = MeInfo(response: response, representation: me) {
+                self = .Me(meInfo)
+            } else {
+                return nil
+            }
+        } else if let meInfo = MeInfo(response: response, representation: representation) {
+            self = .Me(meInfo)
+        } else if let teammate = representation["teammate"] as? NSDictionary {
+            if let teamInfo = BasicAccountInfo(response: response, representation: teammate) {
+                self = .Teammate(teamInfo)
+            } else {
+                return nil
+            }
+        } else if let user = representation["user"] as? NSDictionary {
+            if let userInfo = BasicAccountInfo(response: response, representation: user) {
+                self = .User(userInfo)
+            } else {
+                return nil
+            }
+        } else {
+            return nil
+        }
     }
 }
 
@@ -225,7 +253,7 @@ extension Router.Users: URLStringConvertible, URLRequestConvertible {
     public var URLString: String {
         switch self {
         case .Info(accountId: let accountId):
-            return Router.baseURL.URLByAppendingPathComponent("users/info/\(accountId)").absoluteString!
+            return Router.baseURL.URLByAppendingPathComponent("users/info/").absoluteString!
         case .InfoMe:
             return Router.baseURL.URLByAppendingPathComponent("users/info/me").absoluteString!
         }
@@ -234,7 +262,17 @@ extension Router.Users: URLStringConvertible, URLRequestConvertible {
     public var URLRequest: NSURLRequest {
         let mutableURLRequest = NSMutableURLRequest(URL: NSURL(string: URLString)!)
         mutableURLRequest.HTTPMethod = "POST"
-        return ParameterEncoding.JSON.encode(mutableURLRequest, parameters: [:]).0
+
+        var parameters: [String: AnyObject]? = nil
+
+        switch self {
+        case .Info(accountId: let accountId):
+            parameters = ["account_id": accountId]
+        default:
+            parameters = [:]
+        }
+
+        return ParameterEncoding.JSON.encode(mutableURLRequest, parameters: parameters).0
     }
 }
 
@@ -242,14 +280,14 @@ extension Router.Users: URLStringConvertible, URLRequestConvertible {
 
 extension Client {
     /// Get information about a user's account.
-    public func getInfo(accountID: AccountID, completionHandler: (Result<BasicAccountInfo>) -> Void) {
-        manager.request(Router.Users.Info(accountId: accountID))
+    public func getInfo(accountId: AccountID, completionHandler: (Result<AccountInfo>) -> Void) {
+        manager.request(Router.Users.Info(accountId: accountId))
             .validate()
             .responseResult(completionHandler)
     }
 
     /// Get information about the authorized user's account.
-    public func getInfoMe(completionHandler: (Result<MeInfo>) -> Void) {
+    public func getInfoMe(completionHandler: (Result<AccountInfo>) -> Void) {
         manager.request(Router.Users.InfoMe)
             .validate()
             .responseResult(completionHandler)
