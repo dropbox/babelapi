@@ -1,0 +1,3 @@
+protocol SerializableAsJSON {
+	serialize() -> String
+}

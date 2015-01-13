@@ -29,7 +29,7 @@ class SwiftTargetLanguage(TargetLanguage):
         Float64: 'Double',
         Int32: 'Int32',
         Int64: 'Int64',
-        List: 'Array',
+        List: 'Array<Any>',
         String: 'String',
         Timestamp: 'NSDate',
         UInt32: 'Uint32',

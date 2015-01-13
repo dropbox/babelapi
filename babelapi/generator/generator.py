@@ -77,7 +77,9 @@ class Generator(object):
         self.cur_indent -= dent
 
     @contextmanager
-    def block(self, header, dent=None, delim=('{','}')):
+    def block(self, header=None, dent=None, delim=('{','}')):
+        if header:
+            self.emit_indent()
         self.emit('{} {}'.format(header, delim[0]))
         self.emit_empty_line()
 
