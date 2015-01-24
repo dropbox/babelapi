@@ -1,3 +1,3 @@
 protocol SerializableAsJSON {
-	serialize() -> String
+	func serialize() -> String
 }

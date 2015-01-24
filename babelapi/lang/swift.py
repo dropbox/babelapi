@@ -14,6 +14,8 @@ from babelapi.data_type import (
     Timestamp,
     UInt32,
     UInt64,
+
+    is_list_type,
 )
 
 class SwiftTargetLanguage(TargetLanguage):
@@ -29,24 +31,36 @@ class SwiftTargetLanguage(TargetLanguage):
         Float64: 'Double',
         Int32: 'Int32',
         Int64: 'Int64',
-        List: 'Array<Any>',
         String: 'String',
         Timestamp: 'NSDate',
         UInt32: 'Uint32',
         UInt64: 'UInt64',
     }
 
-    def format_type(self, data_type):
-        return SwiftTargetLanguage._type_table.get(data_type.__class__, self.format_class(data_type.name))
+    def _format_type(self, data_type, namespace=None, suffix=''):
+        if data_type.__class__ in SwiftTargetLanguage._type_table:
+            return SwiftTargetLanguage._type_table[data_type.__class__] + suffix
+        elif is_list_type(data_type):
+            return 'Array{}<{}>'.format(suffix, self._format_type(data_type.data_type, namespace, suffix))
+        else:
+            prefix = self.format_class(namespace.name)+'.' if namespace is not None else ''
+            return prefix + self.format_class(data_type.name) + suffix
+
+    def format_serializer_type(self, data_type):
+        return self._format_type(data_type, suffix='Serializer')
+
+    def format_type(self, data_type, namespace=None):
+        return self._format_type(data_type, namespace=namespace)
 
     # currently only used for representations of base types (bools, numbers, ...)
     def format_obj(self, o):
         assert not isinstance(o, dict), "Bad argument to format_obj: pprint's dict formatting is not valid Swift."
-
         if o is True:
             return 'true'
         if o is False:
             return 'false'
+        if o is None:
+            return 'nil'
         return pprint.pformat(o, width=1)
 
     def _format_camelcase(self, name, lower_first=True):
