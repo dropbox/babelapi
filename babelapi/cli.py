@@ -100,6 +100,9 @@ def main():
     if args.generator == 'python':
         generator = os.path.join(os.path.dirname(__file__),
                                  'generator/target/python/python.babelg.py')
+    elif args.generator == 'swift':
+        generator = os.path.join(os.path.dirname(__file__),
+                                 'generator/target/swift/swift.babelg.py')
     else:
         generator = args.generator
 
