@@ -37,6 +37,10 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         shutil.copy(os.path.join(cur_folder, 'babel_serializers.swift'),
                     self.target_folder_path)
 
+        self._logger.info('Copying babel_validators.swift to output folder')
+        shutil.copy(os.path.join(cur_folder, 'babel_validators.swift'),
+                    self.target_folder_path)
+
         for namespace in self.api.namespaces.values():
             with self.output_to_relative_path('{}.swift'.format(namespace.name)):
                 self._generate_base_namespace_module(namespace)
@@ -107,6 +111,14 @@ class SwiftGenerator(CodeGeneratorMonolingual):
                                     self.lang.format_type(field.data_type),
                                     '?' if field.optional else '')
 
+    def _dump_static_json(self, field, arg):
+        return '\\"{}\\": \({}Serializer.serialize({}))'.format(
+            field.name,
+            self.lang.format_variable(field.name),
+            arg
+        )
+
+    # actual generation methods
 
     def _generate_struct_class_init_method(self, data_type):
         args = []
@@ -128,12 +140,6 @@ class SwiftGenerator(CodeGeneratorMonolingual):
                                               for f in data_type.super_type.fields])
                 self.emit_empty_line()
 
-    def _dump_static_json(self, field, arg):
-        return '\\"{}\\": \({}Serializer.serialize({}))'.format(
-            field.name,
-            self.lang.format_variable(field.name),
-            arg
-        )
 
     def _generate_serializer_for_field(self, field):
         if is_list_type(field.data_type):
