@@ -6,11 +6,16 @@ from contextlib import contextmanager
 
 from babelapi.data_type import (
     DataType,
+    Float32,
+    Float64,
+    Int32,
+    Int64,
+    UInt32,
+    UInt64,
     is_any_type,
     is_binary_type,
     is_boolean_type,
     is_composite_type,
-    is_integer_type,
     is_list_type,
     is_null_type,
     is_string_type,
@@ -53,8 +58,8 @@ class SwiftGenerator(CodeGeneratorMonolingual):
             for data_type in namespace.linearize_data_types():
                 if is_struct_type(data_type):
                     self._generate_struct_class(namespace, data_type)
-                elif is_union_type(data_type):
-                    self._generate_union_type(namespace, data_type)
+                #elif is_union_type(data_type):
+                #    self._generate_union_type(namespace, data_type)
 #            else:
 #                raise TypeError('Cannot handle type %r' % type(data_type))
 #        for route in namespace.routes:
@@ -92,24 +97,17 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         with self.block('public class {}{}'.format(name, extend_suffix)):
             yield
 
-
     @contextmanager
     def serializer_block(self, data_type):
         class_name = self.class_data_type(data_type)
         with self.class_block(class_name+'Serializer', protocols=['JSONSerializer']):
             with self.function_block('func serialize',
                                      args=['value : {}'.format(class_name)],
-                                     return_type='String'):
+                                     return_type='String?'):
                 yield
-
 
     def class_data_type(self, data_type):
         return self.lang.format_class(data_type.name)
-
-    def _var_from_field(self, field):
-        return '{}: {}{}'.format(self.lang.format_variable(field.name),
-                                    self.lang.format_type(field.data_type),
-                                    '?' if field.optional else '')
 
     def _dump_static_json(self, field, arg):
         return '\\"{}\\": \({}Serializer.serialize({}))'.format(
@@ -118,12 +116,117 @@ class SwiftGenerator(CodeGeneratorMonolingual):
             arg
         )
 
-    # actual generation methods
+    def _serializer_type(self, data_type):
+        if is_list_type(data_type):
+            ret = 'ArraySerializer({})'.format(
+                self._serializer_type(data_type.data_type)
+            )
+        elif is_string_type(data_type):
+            ret = 'Serialization._StringSerializer'
+        elif is_timestamp_type(data_type):
+            ret = 'Serialiation._DateSerializer'
+        elif is_boolean_type(data_type):
+            ret = 'Serialization._BoolSerializer'
+        elif isinstance(data_type, Int32):
+            ret = 'Serialization._Int32Serializer'
+        elif isinstance(data_type, Int64):
+            ret = 'Serialization._Int64Serializer'
+        elif isinstance(data_type, UInt32):
+            ret = 'Serialization._UInt32Serializer'
+        elif isinstance(data_type, UInt64):
+            ret = 'Serialization._UInt64Serializer'
+        elif isinstance(data_type, Float32):
+            ret = 'Serialization._Float32Serializer'
+        elif isinstance(data_type, Float64):
+            ret = 'Serialization._Float64Serializer'
+        elif is_composite_type(data_type):
+            ret = self.class_data_type(data_type) + 'Serializer()'
 
-    def _generate_struct_class_init_method(self, data_type):
+        if data_type.nullable:
+            ret = 'NullableSerializer({})'.format(ret)
+
+        return ret
+
+    def _swift_type_mapping(self, data_type):
+        if is_list_type(data_type):
+            ret = 'Array<{}>'.format(
+                self._swift_type_mapping(data_type.data_type)
+            )
+        elif is_string_type(data_type):
+            ret = 'String'
+        elif is_timestamp_type(data_type):
+            ret = 'NSDate'
+        elif is_boolean_type(data_type):
+            ret = 'bool'
+        elif isinstance(data_type, Int32):
+            ret = 'Int32'
+        elif isinstance(data_type, Int64):
+            ret = 'Int64'
+        elif isinstance(data_type, UInt32):
+            ret = 'UInt32'
+        elif isinstance(data_type, UInt64):
+            ret = 'UInt64'
+        elif isinstance(data_type, Float32):
+            ret = 'Float'
+        elif isinstance(data_type, Float64):
+            ret = 'Double'
+        elif is_composite_type(data_type):
+            ret = self.class_data_type(data_type)
+        if data_type.nullable:
+            ret += '?'
+        return ret
+
+    def _determine_validator_type(self, data_type):
+        if is_list_type(data_type):
+            v = "ArrayValidator({})".format(
+                self._func_args({
+                    "itemValidator": self._determine_validator_type(data_type.data_type),
+                    "minItems": data_type.min_items,
+                    "maxItems": data_type.max_items,
+                })
+            )
+        elif is_numeric_type(data_type):
+            v = "ComparableTypeValidator<{}>({})".format(
+                self._swift_type_mapping(data_type),
+                self._func_args({
+                    "minValue": data_type.min_value,
+                    "maxValue": data_type.max_value,
+                })
+            )
+        elif is_string_type(data_type):
+            v = "StringValidator({})".format(
+                self._func_args({
+                    "minLength": data_type.min_length,
+                    "maxLength": data_type.max_length,
+                    "pattern": repr(data_type.pattern),
+                })
+            )
+        else:
+            return None
+
+        if data_type.nullable:
+            v = "NullableValidator({})".format(v)
+        return v
+
+    def _generate_struct_class(self, namespace, data_type):
+        with self.class_block(data_type):
+            for field in data_type.fields:
+                self.emit_line('public let {} : {}'.format(
+                    self.lang.format_variable(field.name),
+                    self._swift_type_mapping(field.data_type),
+                ))
+            self._generate_struct_init(namespace, data_type)
+
+        self._generate_struct_class_serializer(data_type)
+
+    def _generate_struct_init(self, namespace, data_type):
+        # init method
         args = []
         for field in data_type.all_fields:
-            arg = self._var_from_field(field)
+            arg = '{} : {}'.format(
+                self.lang.format_variable(field.name),
+                self._swift_type_mapping(field.data_type)
+            )
             if field.has_default:
                 arg += ' = {}'.format(self.lang.format_obj(field.default))
             args.append(arg)
@@ -132,7 +235,6 @@ class SwiftGenerator(CodeGeneratorMonolingual):
             for field in data_type.fields:
                 v = self.lang.format_variable(field.name)
                 self.emit_line('self.{} = {}'.format(v, v))
-
             if data_type.super_type:
                 self.emit_line('super.init', trailing_newline=False)
                 self._generate_func_arg_list(['{}: {}'.format(self.lang.format_variable(f.name),
@@ -140,71 +242,48 @@ class SwiftGenerator(CodeGeneratorMonolingual):
                                               for f in data_type.super_type.fields])
                 self.emit_empty_line()
 
-
-    def _generate_serializer_for_field(self, field):
-        if is_list_type(field.data_type):
-            serializer = '{}(elementSerializer: {}())'.format(
-                self.lang.format_serializer_type(field.data_type),
-                self.lang.format_serializer_type(field.data_type.data_type),
-            )
-        elif is_composite_type(field.data_type):
-            serializer = '{}()'.format(self.lang.format_serializer_type(field.data_type))
-        else:
-            serializer = 'Serialization._{}'.format(self.lang.format_serializer_type(field.data_type))
-
-        self.emit_line('let {}Serializer = {}'.format(self.lang.format_variable(field.name), serializer))
-
     def _generate_struct_class_serializer(self, data_type):
         with self.serializer_block(data_type):
-            output = []
+            self.emit_line("var output : [String]")
             for field in data_type.fields:
-                self._generate_serializer_for_field(field)
-                val = 'value.{}'.format(self.lang.format_variable(field.name))
-                if field.optional:
-                    val += '!'
-                output.append(self._dump_static_json(field, val))
+                self.emit_line("Serialization.addOutput(field: {}, value: {}, serializer: {}, output)".format(
+                    field.name,
+                    "value."+self.lang.format_variable(field.name),
+                    self._serializer_type(field.data_type),
+                ))
+            self.emit_line('return "{"+", ".join(output)+"}"')
 
-            self.emit_line('return "{{{}}}"'.format(', '.join(output)))
-
-    def _generate_struct_class(self, namespace, data_type):
-        with self.class_block(data_type):
-            for field in data_type.fields:
-                self.emit_line('public var {}'.format(self._var_from_field(field)))
-
-            self._generate_struct_class_init_method(data_type)
-
-        self._generate_struct_class_serializer(data_type)
-
-    def _format_tag_type(self, namespace, data_type):
-        if is_symbol_type(data_type) or is_any_type(data_type):
-            return ''
-        else:
-            return '({})'.format(self.lang.format_type(data_type, namespace))
-
-    def _generate_union_type(self, namespace, data_type):
-        with self.block('public enum {}'.format(self.class_data_type(data_type))):
-            for field in data_type.fields:
-                typ = self._format_tag_type(namespace, field.data_type)
-                self.emit_line('case {}{}'.format(self.lang.format_class(field.name),
-                                                  typ))
-
-        self._generate_union_serializer(data_type)
-
-    def _generate_union_serializer(self, data_type):
-        class_name = self.class_data_type(data_type)
-        with self.block('class {}Serializer: JSONSerializer'.format(class_name)):
-            with self.block('func serialize(value: {}) -> String'.format(class_name)):
-                with self.block('switch value'):
-                    for field in data_type.fields:
-                        case = '.{}'.format(self.lang.format_class(field.name))
-                        if is_symbol_type(field.data_type) or is_any_type(field.data_type):
-                            ret = '\\"{}\\"'.format(field.name)
-                        else:
-                            case += '(let arg)'
-                            ret = '{'+self._dump_static_json(field, 'arg')+'}'
-                        self.emit_line('case {}:'.format(case))
-                        with self.indent():
-                            if not is_symbol_type(field.data_type) and not is_any_type(field.data_type):
-                                self._generate_serializer_for_field(field)
-                            self.emit_line('return "{}"'.format(ret))
-
+#
+#    def _format_tag_type(self, namespace, data_type):
+#        if is_symbol_type(data_type) or is_any_type(data_type):
+#            return ''
+#        else:
+#            return '({})'.format(self.lang.format_type(data_type, namespace))
+#
+#    def _generate_union_type(self, namespace, data_type):
+#        with self.block('public enum {}'.format(self.class_data_type(data_type))):
+#            for field in data_type.fields:
+#                typ = self._format_tag_type(namespace, field.data_type)
+#                self.emit_line('case {}{}'.format(self.lang.format_class(field.name),
+#                                                  typ))
+#
+#        self._generate_union_serializer(data_type)
+#
+#    def _generate_union_serializer(self, data_type):
+#        class_name = self.class_data_type(data_type)
+#        with self.block('class {}Serializer: JSONSerializer'.format(class_name)):
+#            with self.block('func serialize(value: {}) -> String'.format(class_name)):
+#                with self.block('switch value'):
+#                    for field in data_type.fields:
+#                        case = '.{}'.format(self.lang.format_class(field.name))
+#                        if is_symbol_type(field.data_type) or is_any_type(field.data_type):
+#                            ret = '\\"{}\\"'.format(field.name)
+#                        else:
+#                            case += '(let arg)'
+#                            ret = '{'+self._dump_static_json(field, 'arg')+'}'
+#                        self.emit_line('case {}:'.format(case))
+#                        with self.indent():
+#                            if not is_symbol_type(field.data_type) and not is_any_type(field.data_type):
+#                                self._generate_serializer_for_field(field)
+#                            self.emit_line('return "{}"'.format(ret))
+#
