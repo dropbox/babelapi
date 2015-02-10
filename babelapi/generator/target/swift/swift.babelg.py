@@ -109,7 +109,8 @@ class SwiftGenerator(CodeGeneratorMonolingual):
     def serializer_block(self, data_type):
         class_name = self.class_data_type(data_type)
         with self.class_block(class_name+'Serializer', protocols=['JSONSerializer']):
-            with self.function_block('func serialize',
+            self.emit_line("public init() { }")
+            with self.function_block('public func serialize',
                                      args=['value : {}'.format(class_name)],
                                      return_type='String?'):
                 yield
@@ -287,21 +288,20 @@ class SwiftGenerator(CodeGeneratorMonolingual):
 
     def _generate_union_serializer(self, data_type):
         class_name = self.class_data_type(data_type)
-        with self.block('class {}Serializer: JSONSerializer'.format(class_name)):
-            with self.block('func serialize(value: {}) -> String?'.format(class_name)):
-                with self.block('switch value'):
-                    for field in data_type.fields:
-                        case = '.{}'.format(self.lang.format_class(field.name))
-                        if is_symbol_type(field.data_type) or is_any_type(field.data_type):
-                            ret = '"\\"{}\\""'.format(field.name)
-                        else:
-                            case += '(let arg)'
-                            ret = "Serialization.output({})".format(self._func_args([
-                                ("field", '"{}"'.format(field.name)),
-                                ("value", "arg"),
-                                ("serializer", self._serializer_type(field.data_type)),
-                            ]))
-                        self.emit_line('case {}:'.format(case))
-                        with self.indent():
-                            self.emit_line('return {}'.format(ret))
+        with self.serializer_block(data_type):
+            with self.block('switch value'):
+                for field in data_type.fields:
+                    case = '.{}'.format(self.lang.format_class(field.name))
+                    if is_symbol_type(field.data_type) or is_any_type(field.data_type):
+                        ret = '"\\"{}\\""'.format(field.name)
+                    else:
+                        case += '(let arg)'
+                        ret = "Serialization.output({})".format(self._func_args([
+                            ("field", '"{}"'.format(field.name)),
+                            ("value", "arg"),
+                            ("serializer", self._serializer_type(field.data_type)),
+                        ]))
+                    self.emit_line('case {}:'.format(case))
+                    with self.indent():
+                        self.emit_line('return {}'.format(ret))
 
