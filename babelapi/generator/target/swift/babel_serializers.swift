@@ -7,12 +7,12 @@ class ArraySerializer<T : JSONSerializer> : JSONSerializer {
 
 	var elementSerializer : T
 
-	init(elementSerializer : T) {
+	init(_ elementSerializer: T) {
 		self.elementSerializer = elementSerializer
 	}
 
 	func serialize(arr : Array<T.ValueType>) -> String? {
-		let s = ", ".join(arr.map { self.elementSerializer.serialize($0) })
+		let s = ", ".join(arr.map { self.elementSerializer.serialize($0) ?? "null" })
 		return "[\(s)]"
 	}
 }
@@ -52,11 +52,11 @@ class NullableSerializer<T : JSONSerializer> : JSONSerializer {
 
 	var internalSerializer : T
 
-	func init(_ serializer : T) {
+	init(_ serializer : T) {
 		self.internalSerializer = serializer
 	}
 
-	func serialize(value : Optional<T.ValueType>) -> String?
+	func serialize(value : Optional<T.ValueType>) -> String? {
 		if let v = value {
 			return internalSerializer.serialize(v)
 		} else {
@@ -71,13 +71,15 @@ struct Serialization {
 	static var _BoolSerializer = BoolSerializer()
 	static var _UInt64Serializer = UInt64Serializer()
 
-	static func addOutput<T : JSONSerializer>(field : String,
-											  value : T.ValueType,
-											  serializer : T,
-											  output : [String]) {
+	static func addOutput<T : JSONSerializer>(#field: String, value : T.ValueType, serializer : T, var output : [String]) {
 		if let v = serializer.serialize(value) {
-			output.append("\"\(field)\": \"\(v)\"")
+			output.append("\"\(field)\": \(v)")
 		}
+	}
+
+	static func output<T : JSONSerializer>(#field: String, value : T.ValueType, serializer : T) -> String? {
+		let v = serializer.serialize(value) ?? "null"
+		return "\"\(field)\": \(v)"
 	}
 }
 

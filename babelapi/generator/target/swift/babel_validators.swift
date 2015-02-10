@@ -1,5 +1,5 @@
 protocol Validator {
-	typealias ValueType
+    typealias ValueType
     func validate(value: ValueType)
 }
 
@@ -8,8 +8,8 @@ class ArrayValidator<T: Validator>: Validator {
     let minItems : Int?
     let maxItems : Int?
 
-    init(itemValidator: T, minItems : Int?, maxItems : Int?) {
-        self.elementValidator = elementValidator
+    init(itemValidator: T, minItems : Int? = nil, maxItems : Int? = nil) {
+        self.itemValidator = itemValidator
         self.minItems = minItems
         self.maxItems = maxItems
     }
@@ -25,20 +25,27 @@ class ArrayValidator<T: Validator>: Validator {
         }
 
         for el in value {
-            self.elementValidator.validate(el)
+            self.itemValidator.validate(el)
         }
     }
 }
 
 class StringValidator : Validator {
 
-	let minValue : Int?
-	let maxValue : Int?
+    let minLength : Int?
+    let maxLength : Int?
+    let regex : NSRegularExpression?
 
-	init(minValue : Int?, maxValue : Int?) {
-		self.minValue = minValue
-		self.maxValue = maxValue
-	}
+    init(minLength : Int? = nil, maxLength : Int? = nil, pattern: String? = nil) {
+        self.minLength = minLength
+        self.maxLength = maxLength
+
+        if let pat = pattern {
+            self.regex = NSRegularExpression(pattern: pat,
+                                             options: nil,
+                                             error: nil)
+        }
+    }
 
     func validate(value : String) {
         let length = countElements(value)
@@ -58,35 +65,36 @@ class StringValidator : Validator {
 }
 
 class ComparableTypeValidator<T : Comparable> : Validator {
-	let minValue : T?
-	let maxValue : T?
+    let minValue : T?
+    let maxValue : T?
 
-	init(minValue : T?, maxValue : T?) {
-		self.minValue = minValue
-		self.maxValue = maxValue
-	}
+    init(minValue : T? = nil, maxValue : T? = nil) {
+        self.minValue = minValue
+        self.maxValue = maxValue
+    }
 
-	func validate(value : T) {
-		if let min = self.minValue {
-			assert (min <= value, "\(value) must be at least \(min)")
-		}
-		if let max = self.maxValue {
-			assert (max >= value, "\(value) must be at most \(max)")
-		}
-	}
+    func validate(value : T) {
+        if let min = self.minValue {
+            assert (min <= value, "\(value) must be at least \(min)")
+        }
+        if let max = self.maxValue {
+            assert (max >= value, "\(value) must be at most \(max)")
+        }
+    }
+}
 
 class NullableValidator<T : Validator> : Validator {
-	let internalValidator : T
+    let internalValidator : T
 
-	init(_ internalValidator : T) {
-		self.internalValidator = internalValidator
-	}
+    init(_ internalValidator : T) {
+        self.internalValidator = internalValidator
+    }
 
-	func validate(value : Optional<T.ValueType>) {
-		if let v = value {
-			self.internalValidator.validate(v)
-		}
-	}
+    func validate(value : Optional<T.ValueType>) {
+        if let v = value {
+            self.internalValidator.validate(v)
+        }
+    }
 }
 
 class EmptyValidator<T> : Validator {
