@@ -48,6 +48,10 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         shutil.copy(os.path.join(cur_folder, 'babel_validators.swift'),
                     self.target_folder_path)
 
+        self._logger.info('Copying Dropbox.swift to output folder')
+        shutil.copy(os.path.join(cur_folder, 'Dropbox.swift'),
+                    self.target_folder_path)
+
         for namespace in self.api.namespaces.values():
             with self.output_to_relative_path('{}.swift'.format(namespace.name)):
                 self._generate_base_namespace_module(namespace)
@@ -381,9 +385,18 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         response_type = self._swift_type_mapping(route.response_data_type, namespace=namespace)
         error_type = self._swift_type_mapping(route.error_data_type, namespace=namespace)
 
-        args = self._func_args([("request", request_type),
-                                ("completionHandler", "(JSON?, NSError?) -> Void")#"({}, {}) -> Void".format(response_type, error_type))
-                               ])
+        #func runRequest<RType: JSONSerializer, EType: JSONSerializer>(
+        ##host: String,
+        #route: String,
+        #params: String,
+        #responseSerializer: RType,
+        #errorSerializer: EType,
+        #completionHandler: RequestResult<RType.ValueType, EType.ValueType> -> Void) {
+
+        args = self._func_args([
+            ("request", request_type),
+            ("completionHandler", "(RequestResult<{}, {}>) -> Void".format(response_type, error_type)),
+        ])
 
         func_name = self.lang.format_method('{}_{}'.format(namespace.name, route.name))
         with self.function_block('public func {}'.format(func_name), args=args):
@@ -391,5 +404,7 @@ class SwiftGenerator(CodeGeneratorMonolingual):
                 ('host', '"'+host_ident+'"'),
                 ('route', '"'+route.name+'"'),
                 ('params', '{}.serialize(request) ?? ""'.format(self._serializer_type(route.request_data_type, namespace=namespace))),
+                ('responseSerializer', self._serializer_type(route.response_data_type, namespace=namespace)),
+                ('errorSerializer', self._serializer_type(route.error_data_type, namespace=namespace)),
                 ('completionHandler', 'completionHandler')
             ])))
