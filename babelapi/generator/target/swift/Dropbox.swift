@@ -10,29 +10,28 @@ import Foundation
 import Alamofire
 import SwiftyJSON
 
-
 // Dropbox API errors
 public let DropboxErrorDomain = "com.dropbox.error"
-public enum RequestResult<ResponseType, ErrorType> {
+
+public class Box<T> {
+	public let unboxed : T
+	init (_ v : T) { self.unboxed = v }
+}
+public enum CallError<ErrorType> {
     case InternalServerError(Int, String?)
     case BadInputError(String?)
     case RateLimitError
     case HTTPError(Int?, String?)
-    case RouteError(ErrorType)
-    case RouteResult(ResponseType)
+    case RouteError(Box<ErrorType>)
 }
 
 
 
 public class DropboxClient {
-    
-
-    
     var accessToken: String
     var baseHosts : [String : String]
     
     public init(accessToken: String, baseApiUrl: String, baseContentUrl: String, baseNotifyUrl: String) {
-        
         self.accessToken = accessToken
         self.baseHosts = [
             "meta" : baseApiUrl,
@@ -49,7 +48,7 @@ public class DropboxClient {
     
     public convenience init(accessToken: String) {
         self.init(accessToken: accessToken,
-            baseApiUrl: "https://api.dropbox.com/2/",
+            baseApiUrl: "https://api.dropbox.com/2-beta",
             baseContentUrl: "https://api-content.dropbox.com",
             baseNotifyUrl: "https://api-notify.dropbox.com")
     }
@@ -61,42 +60,49 @@ public class DropboxClient {
         params: String?,
         responseSerializer: RType,
         errorSerializer: EType,
-        completionHandler: RequestResult<RType.ValueType, EType.ValueType> -> Void) {
-            let url = "\(self.baseHosts[host]!)/\(route)"
-            let manager = Alamofire.Manager.sharedInstance
-            var req = NSMutableURLRequest(URL: NSURL(string: url)!)
-
-            if let p = params {
-                req.HTTPBody = p.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
-            }
-            
-            manager.request(req)
-                .validate()
+        completionHandler: (RType.ValueType?, CallError<EType.ValueType>?) -> Void) {
+            let url = "\(self.baseHosts[host]!)\(route)"
+            Alamofire.request(.POST, url, parameters: [:], encoding: .Custom({convertible, _ in
+                var mutableRequest = convertible.URLRequest.copy() as NSMutableURLRequest
+                if params != nil {
+                    mutableRequest.HTTPBody = params!.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: false)
+                }
+                return (mutableRequest, nil)
+            })).validate()
                 .response { (request, response, data, error) -> Void in
-                    var ret : RequestResult<RType.ValueType, EType.ValueType>
+                    var err : CallError<EType.ValueType>?
+					var ret : RType.ValueType?
                     if error != nil {
                         if let code = response?.statusCode {
                             switch code {
                             case 500...599:
                                 let message = NSString(data: data as NSData, encoding: NSUTF8StringEncoding)
-                                ret = .InternalServerError(code, message)
+                                err = .InternalServerError(code, message)
                             case 400:
                                 let message = NSString(data: data as NSData, encoding: NSUTF8StringEncoding)
-                                ret = .BadInputError(message)
+                                err = .BadInputError(message)
                             case 429:
-                                ret = .RateLimitError
+                                err = .RateLimitError
                             case 409:
-                                ret = .RouteError(errorSerializer.deserialize(JSON(data as NSData)))
+                                let json = JSON(data: data as NSData)
+                                err = .RouteError(Box(errorSerializer.deserialize(json)))
                             default:
-                                ret = .HTTPError(code, "An error occurred.")
+                                err = .HTTPError(code, "An error occurred.")
                             }
                         } else {
-                            ret = .HTTPError(nil, nil)
+                            let message = NSString(data: data as NSData, encoding: NSUTF8StringEncoding)
+                            err = .HTTPError(nil, message)
                         }
                     } else {
-                        ret = .RouteResult(responseSerializer.deserialize(JSON(data as NSData)))
+                        ret = responseSerializer.deserialize(JSON(data: data as NSData))
                     }
-                    completionHandler(ret)
+                    completionHandler(ret, err)
             }
+
     }
 }
+
+
+
+
+

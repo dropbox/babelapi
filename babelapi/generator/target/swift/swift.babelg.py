@@ -80,11 +80,15 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         with self.block(signature):
             yield
 
-    def _func_args(self, args_list, newlines=False):
+    def _func_args(self, args_list, newlines=False, force_first=False):
         out = []
+        first = True
         for k, v in args_list:
+            if first and force_first:
+                k = "#"+k
             if v is not None:
                 out.append('{}: {}'.format(k, v))
+            first = False
         sep = ', '
         if newlines:
             sep += '\n' + self.make_indent()
@@ -242,18 +246,20 @@ class SwiftGenerator(CodeGeneratorMonolingual):
 
         self._generate_struct_class_serializer(data_type)
 
-    def _generate_struct_init(self, namespace, data_type):
-        # init method
+    def _struct_init_args(self, data_type, namespace=None):
         args = []
         for field in data_type.all_fields:
             name = self.lang.format_variable(field.name)
-            value = self._swift_type_mapping(field.data_type)
-
+            value = self._swift_type_mapping(field.data_type, namespace=namespace)
             if field.has_default:
                 value += ' = {}'.format(self.lang.format_obj(field.default))
             arg = (name, value)
             args.append(arg)
+        return args
 
+    def _generate_struct_init(self, namespace, data_type):
+        # init method
+        args = self._struct_init_args(data_type)
         with self.function_block('public init', self._func_args(args, newlines=True)):
             for field in data_type.fields:
                 v = self.lang.format_variable(field.name)
@@ -277,7 +283,7 @@ class SwiftGenerator(CodeGeneratorMonolingual):
                         ("field", '"'+field.name+'"'),
                         ("value", "value."+self.lang.format_variable(field.name)),
                         ("serializer", self._serializer_type(field.data_type)),
-                        ("output", "output"),
+                        ("output", "&output"),
                     ])))
                 self.emit_line('return "{"+", ".join(output)+"}"')
             with self.deserializer_func(data_type):
@@ -392,18 +398,26 @@ class SwiftGenerator(CodeGeneratorMonolingual):
         #responseSerializer: RType,
         #errorSerializer: EType,
         #completionHandler: RequestResult<RType.ValueType, EType.ValueType> -> Void) {
+        if is_struct_type(route.request_data_type):
+            arg_list = self._struct_init_args(route.request_data_type, namespace=namespace)
+        else:
+            arg_list = [('request', request_type)]
 
-        args = self._func_args([
-            ("request", request_type),
-            ("completionHandler", "(RequestResult<{}, {}>) -> Void".format(response_type, error_type)),
-        ])
+        arg_list.append(
+            ("completionHandler", "({}?, CallError<{}>?) -> Void".format(response_type, error_type))
+        )
 
         func_name = self.lang.format_method('{}_{}'.format(namespace.name, route.name))
-        with self.function_block('public func {}'.format(func_name), args=args):
+        with self.function_block('public func {}'.format(func_name), args=self._func_args(arg_list, force_first=True)):
+
+            if is_struct_type(route.request_data_type):
+                constructor_args = [(name, name) for name, value in self._struct_init_args(route.request_data_type)]
+                self.emit_line('let request = {}({})'.format(request_type, self._func_args(constructor_args)))
+
             self.emit_line('self.runRequest({})'.format(self._func_args([
                 ('host', '"'+host_ident+'"'),
-                ('route', '"'+route.name+'"'),
-                ('params', '{}.serialize(request) ?? ""'.format(self._serializer_type(route.request_data_type, namespace=namespace))),
+                ('route', '"/{}/{}"'.format(namespace.name, route.name)),
+                ('params', '{}.serialize(request)'.format(self._serializer_type(route.request_data_type, namespace=namespace))),
                 ('responseSerializer', self._serializer_type(route.response_data_type, namespace=namespace)),
                 ('errorSerializer', self._serializer_type(route.error_data_type, namespace=namespace)),
                 ('completionHandler', 'completionHandler')

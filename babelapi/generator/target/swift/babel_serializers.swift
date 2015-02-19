@@ -195,7 +195,7 @@ struct Serialization {
 	static var _BoolSerializer = BoolSerializer()
 	static var _UInt64Serializer = UInt64Serializer()
 
-	static func addOutput<T : JSONSerializer>(#field: String, value : T.ValueType, serializer : T, var output : [String]) {
+	static func addOutput<T : JSONSerializer>(#field: String, value : T.ValueType, serializer : T, inout output : [String]) {
 		if let v = serializer.serialize(value) {
 			output.append("\"\(field)\": \(v)")
 		}
