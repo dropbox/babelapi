@@ -795,9 +795,7 @@ class Struct(CompositeType):
         """
         Unlike other enumerated-subtypes-related functionality, this method
         returns not just direct subtypes, but all subtypes of this struct. The
-        tag of each subtype is the tag of the enumerated subtype from which it
-        descended, which means that it's likely that subtypes will share the
-        same tag.
+        tag of each subtype is the list of tags from which the type descends.
 
         This method only applies to structs that enumerate subtypes.
 
@@ -806,17 +804,38 @@ class Struct(CompositeType):
         in the serialized format.
 
         Returns:
-            List[Tuple[String, Struct]]
+            List[Tuple[List[String], Struct]]
         """
         assert self.has_enumerated_subtypes(), 'Enumerated subtypes not set.'
-        subtypes_with_tags = []  # List[Tuple[String, Struct]]
-        for subtype_field in self.get_enumerated_subtypes():
-            subtypes_with_tags.append(
-                (subtype_field.name, subtype_field.data_type))
-            for subtype in subtype_field.data_type.subtypes:
-                subtypes_with_tags.append(
-                    (subtype_field.name, subtype))
+        subtypes_with_tags = []  # List[Tuple[List[String], Struct]]
+        stack = [self]
+        while stack:
+            data_type = stack.pop()
+            if data_type.has_enumerated_subtypes():
+                for subtype_field in data_type.get_enumerated_subtypes():
+                    stack.append(subtype_field.data_type)
+            else:
+                subtypes_with_tags.append((data_type._get_subtype_tags(), data_type))
         return subtypes_with_tags
+
+    def _get_subtype_tags(self):
+        assert self.is_member_of_enumerated_subtypes_tree() and not self.has_enumerated_subtypes(), \
+            'Not a part of a subtypes tree.'
+        cur = self.parent_type
+        cur_dt = self
+        tags = []
+        while cur:
+            assert cur.has_enumerated_subtypes()
+            for subtype_field in cur.get_enumerated_subtypes():
+                if subtype_field.data_type is cur_dt:
+                    tags.append(subtype_field.name)
+                    break
+            else:
+                assert False, 'Could not find?!'
+            cur_dt = cur
+            cur = cur.parent_type
+        tags.reverse()
+        return tuple(tags)
 
     def _add_example(self, example):
         """Adds a "raw example" for this type.

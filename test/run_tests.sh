@@ -15,12 +15,12 @@ fi
 
 # Do not use the -s or -t flag for nose2. It requires our test files
 # to be in Python packages.
-echo "Running tests for babelapi package"
-PYTHONPATH=.. python2.7 -m nose2
-
-echo
-echo "Running tests for babelapi package using Python 3"
-PYTHONPATH=.. python3 -m nose2
+#echo "Running tests for babelapi package"
+#PYTHONPATH=.. python2.7 -m nose2
+#
+#echo
+#echo "Running tests for babelapi package using Python 3"
+#PYTHONPATH=.. python3 -m nose2
 
 echo
 echo "Running tests for Python generator"

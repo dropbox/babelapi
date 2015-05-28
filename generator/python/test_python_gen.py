@@ -210,18 +210,18 @@ class TestDropInModules(unittest.TestCase):
 
         # Test primitive variant
         u = U('a', 64)
-        self.assertEqual(json_encode(bv.Union(U), u), json.dumps({'a': 64}))
+        self.assertEqual(json_encode(bv.Union(U), u, old_style=True), json.dumps({'a': 64}))
 
         # Test symbol variant
         u = U('b')
-        self.assertEqual(json_encode(bv.Union(U), u), json.dumps('b'))
+        self.assertEqual(json_encode(bv.Union(U), u, old_style=True), json.dumps('b'))
 
         # Test struct variant
         c = S()
         c.f = 'hello'
         c._f_present = True
         u = U('c', c)
-        self.assertEqual(json_encode(bv.Union(U), u), json.dumps({'c': {'f': 'hello'}}))
+        self.assertEqual(json_encode(bv.Union(U), u, old_style=True), json.dumps({'c': {'f': 'hello'}}))
 
         # Test list variant
         u = U('d', [1, 2, 3, 'a'])
@@ -229,28 +229,28 @@ class TestDropInModules(unittest.TestCase):
         self.assertRaises(bv.ValidationError, lambda: json_encode(bv.Union(U), u))
         l = [1, 2, 3, 4]
         u = U('d', [1, 2, 3, 4])
-        self.assertEqual(json_encode(bv.Union(U), u), json.dumps({'d': l}))
+        self.assertEqual(json_encode(bv.Union(U), u, old_style=True), json.dumps({'d': l}))
 
         # Test a nullable union
         self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), None),
                          json.dumps(None))
-        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u),
+        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u, old_style=True),
                          json.dumps({'d': l}))
 
         # Test nullable primitive variant
         u = U('e', None)
-        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u),
+        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u, old_style=True),
                          json.dumps('e'))
         u = U('e', 64)
-        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u),
+        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u, old_style=True),
                          json.dumps({'e': 64}))
 
         # Test nullable composite variant
         u = U('f', None)
-        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u),
+        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u, old_style=True),
                          json.dumps('f'))
         u = U('f', c)
-        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u),
+        self.assertEqual(json_encode(bv.Nullable(bv.Union(U)), u, old_style=True),
                          json.dumps({'f': {'f': 'hello'}}))
 
     def test_json_encoder_error_messages(self):
@@ -393,7 +393,7 @@ class TestDropInModules(unittest.TestCase):
         U.b = U('b')
 
         # Test primitive variant
-        u = json_decode(bv.Union(U), json.dumps({'a': 64}))
+        u = json_decode(bv.Union(U), json.dumps({'a': 64}), old_style=True)
         self.assertEqual(u.get_a(), 64)
 
         # Test void variant
@@ -401,18 +401,18 @@ class TestDropInModules(unittest.TestCase):
         self.assertEqual(u._tag, 'b')
         self.assertRaises(bv.ValidationError,
                           lambda: json_decode(bv.Union(U), json.dumps({'b': [1,2]})))
-        u = json_decode(bv.Union(U), json.dumps({'b': [1,2]}), strict=False)
+        u = json_decode(bv.Union(U), json.dumps({'b': [1,2]}), strict=False, old_style=True)
         self.assertEqual(u._tag, 'b')
 
         # Test struct variant
-        u = json_decode(bv.Union(U), json.dumps({'c': {'f': 'hello'}}))
+        u = json_decode(bv.Union(U), json.dumps({'c': {'f': 'hello'}}), old_style=True)
         self.assertEqual(u.get_c().f, 'hello')
         self.assertRaises(bv.ValidationError,
                           lambda: json_decode(bv.Union(U), json.dumps({'c': [1,2,3]})))
 
         # Test list variant
         l = [1, 2, 3, 4]
-        u = json_decode(bv.Union(U), json.dumps({'d': l}))
+        u = json_decode(bv.Union(U), json.dumps({'d': l}), old_style=True)
         self.assertEqual(u.get_d(), l)
 
         # Raises if unknown tag
@@ -423,25 +423,25 @@ class TestDropInModules(unittest.TestCase):
                           lambda: json_decode(bv.Union(U), json.dumps({'z': 'test'})))
 
         # Test catch all variant
-        u = json_decode(bv.Union(U), json.dumps({'z': 'test'}), strict=False)
+        u = json_decode(bv.Union(U), json.dumps({'z': 'test'}), strict=False, old_style=True)
         self.assertEqual(u._tag, 'b')
 
         # Test nullable union
-        u = json_decode(bv.Nullable(bv.Union(U)), json.dumps(None), strict=False)
+        u = json_decode(bv.Nullable(bv.Union(U)), json.dumps(None), strict=False, old_style=True)
         self.assertEqual(u, None)
 
         # Test nullable union member
         u = json_decode(bv.Union(U), json.dumps('e'))
         self.assertEqual(u._tag, 'e')
         self.assertEqual(u._value, None)
-        u = json_decode(bv.Union(U), json.dumps({'e': 64}), strict=False)
+        u = json_decode(bv.Union(U), json.dumps({'e': 64}), strict=False, old_style=True)
         self.assertEqual(u._tag, 'e')
         self.assertEqual(u._value, 64)
 
         # Test nullable composite variant
         u = json_decode(bv.Union(U), json.dumps('f'))
         self.assertEqual(u._tag, 'f')
-        u = json_decode(bv.Union(U), json.dumps({'f': {'f': 'hello'}}), strict=False)
+        u = json_decode(bv.Union(U), json.dumps({'f': {'f': 'hello'}}), strict=False, old_style=True)
         self.assertEqual(type(u._value), S)
         self.assertEqual(u._value.f, 'hello')
 
@@ -477,7 +477,7 @@ class TestDropInModules(unittest.TestCase):
         # Test that validation error references outer union and inner structs
         with self.assertRaises(bv.ValidationError):
             try:
-                json_decode(bv.Union(U), json.dumps({'t': {'f': {'i': {}}}}), strict=False)
+                json_decode(bv.Union(U), json.dumps({'t': {'f': {'i': {}}}}), strict=False, old_style=True)
             except bv.ValidationError as e:
                 prefix = 't.f.i: '
                 self.assertEqual(prefix, str(e)[:len(prefix)])
@@ -512,7 +512,13 @@ union U
 
 union V
     t0
-    t1 String?
+    t1 String
+    t2 String?
+    t3 S
+    t4 S?
+
+struct S
+    f String
 
 struct Resource
     union*
@@ -600,31 +606,153 @@ class TestGeneratedPython(unittest.TestCase):
                         json.dumps({'a': 'A', 'b': None}))
         self.assertEqual("b: expected integer, got null", str(cm.exception))
 
-    def test_union_decoding(self):
+    def test_union_decoding_old(self):
         v = json_decode(bv.Union(self.ns.V), json.dumps('t0'))
         self.assertIsInstance(v, self.ns.V)
 
         # Test verbose representation of a void union member
-        v = json_decode(bv.Union(self.ns.V), json.dumps({'t0': None}))
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'t0': None}), old_style=True)
         self.assertIsInstance(v, self.ns.V)
 
         # Test bad value for void union member
         with self.assertRaises(bv.ValidationError) as cm:
-            json_decode(bv.Union(self.ns.V), json.dumps({'t0': 10}))
+            json_decode(bv.Union(self.ns.V), json.dumps({'t0': 10}), old_style=True)
         self.assertEqual("expected null, got integer", str(cm.exception))
 
         # Test compact representation of a nullable union member with missing value
-        v = json_decode(bv.Union(self.ns.V), json.dumps('t1'))
+        v = json_decode(bv.Union(self.ns.V), json.dumps('t2'))
         self.assertIsInstance(v, self.ns.V)
 
         # Test verbose representation of a nullable union member with missing value
-        v = json_decode(bv.Union(self.ns.V), json.dumps({'t1': None}))
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'t2': None}), old_style=True)
         self.assertIsInstance(v, self.ns.V)
 
         # Test verbose representation of a nullable union member with bad value
         with self.assertRaises(bv.ValidationError) as cm:
-            json_decode(bv.Union(self.ns.V), json.dumps({'t1': 123}))
+            json_decode(bv.Union(self.ns.V), json.dumps({'t2': 123}), old_style=True)
         self.assertEqual("'123' expected to be a string, got integer", str(cm.exception))
+
+    def test_union_decoding(self):
+        v = json_decode(bv.Union(self.ns.V), json.dumps('t0'))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t0())
+
+        # Test verbose representation of a void union member
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't0'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t0())
+
+        # Test extra verbose representation of a void union member
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't0', 't0': None}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t0())
+
+        # Test error: extra key
+        with self.assertRaises(bv.ValidationError) as cm:
+            v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't0', 'unk': 123}))
+        self.assertEqual("unexpected key 'unk'", str(cm.exception))
+
+        # Test error: bad type
+        with self.assertRaises(bv.ValidationError) as cm:
+            v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 123}))
+        self.assertEqual('tag must be string, got integer', str(cm.exception))
+
+        # Test primitive union member
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't1', 't1': 'hello'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t1())
+        self.assertEqual(v.get_t1(), 'hello')
+
+        # Test nullable primitive union member with null value
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't2', 't2': None}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t2())
+        self.assertEqual(v.get_t2(), None)
+
+        # Test nullable primitive union member that is missing
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't2'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t2())
+        self.assertEqual(v.get_t2(), None)
+
+        # Test error: extra key
+        with self.assertRaises(bv.ValidationError) as cm:
+            json_decode(bv.Union(self.ns.V),
+                        json.dumps({'.tag': 't2', 't2': None, 'unk': 123}))
+        self.assertEqual("unexpected key 'unk'", str(cm.exception))
+
+        # Test composite union member
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't3', 'f': 'hello'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t3())
+        self.assertIsInstance(v.get_t3(), self.ns.S)
+        self.assertEqual(v.get_t3().f, 'hello')
+
+        # Test error: extra key
+        with self.assertRaises(bv.ValidationError) as cm:
+            json_decode(bv.Union(self.ns.V),
+                        json.dumps({'.tag': 't3', 'f': 'hello', 'g': 'blah'}))
+        self.assertEqual("t3: unknown field 'g'", str(cm.exception))
+
+        # Test composite union member with unknown key, but strict is False
+        v = json_decode(bv.Union(self.ns.V),
+                        json.dumps({'.tag': 't3', 'f': 'hello', 'g': 'blah'}),
+                        strict=False)
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t3())
+        self.assertIsInstance(v.get_t3(), self.ns.S)
+        self.assertEqual(v.get_t3().f, 'hello')
+
+        # Test nullable composite union member
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't4', 'f': 'hello'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t4())
+        self.assertIsInstance(v.get_t4(), self.ns.S)
+        self.assertEqual(v.get_t4().f, 'hello')
+
+        # Test nullable composite union member that's null
+        v = json_decode(bv.Union(self.ns.V), json.dumps({'.tag': 't4'}))
+        self.assertIsInstance(v, self.ns.V)
+        self.assertTrue(v.is_t4())
+        self.assertIsNone(v.get_t4())
+
+    def test_union_encoding(self):
+        # Test void union member
+        v_t0 = self.ns.V.t0
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t0),
+                         {'.tag': 't0'})
+
+        # Test primitive union member
+        v_t1 = self.ns.V.t1('hello')
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t1),
+                         {'.tag': 't1', 't1': 'hello'})
+
+        # Test nullable primitive union member
+        v_t2 = self.ns.V.t2('hello')
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t2),
+                         {'.tag': 't2', 't2': 'hello'})
+
+        # Test nullable primitive union member that's null
+        v_t2 = self.ns.V.t2(None)
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t2),
+                         {'.tag': 't2'})
+
+        # Test composite union member
+        s = self.ns.S(f='hello')
+        v_t3 = self.ns.V.t3(s)
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t3),
+                         {'.tag': 't3', 'f': 'hello'})
+
+        # Test nullable composite union member
+        s = self.ns.S(f='hello')
+        v_t4 = self.ns.V.t4(s)
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t4),
+                         {'.tag': 't4', 'f': 'hello'})
+
+        # Test nullable composite union member that's null
+        v_t4 = self.ns.V.t4(None)
+        self.assertEqual(json_compat_obj_encode(bv.Union(self.ns.V), v_t4),
+                         {'.tag': 't4'})
 
     def test_objs(self):
 
@@ -641,58 +769,90 @@ class TestGeneratedPython(unittest.TestCase):
         # Test that non-void union member is callable (should be a method)
         self.assertTrue(callable(self.ns.U.t1))
 
-    def test_struct_enumerated_subtypes_json_encode(self):
+    def test_struct_enumerated_subtypes_encoding(self):
         # Test serializing a leaf struct from  the root struct
         fi = self.ns.File(name='test.doc', size=100)
         self.assertEqual(
             json_compat_obj_encode(bv.StructTree(self.ns.Resource), fi),
-            {'name': 'test.doc', 'file': {'size': 100}})
+            {'.tag': 'file', 'name': 'test.doc', 'size': 100})
 
         # Test serializing a leaf struct as the base and target
         self.assertEqual(
             json_compat_obj_encode(bv.Struct(self.ns.File), fi),
             {'name': 'test.doc', 'size': 100})
 
-        fo = self.ns.Folder(name='test')
-
-        # Test serializing a non-leaf struct using a root base struct
-        self.assertEqual(
-            json_compat_obj_encode(bv.StructTree(self.ns.Resource), fo),
-            {'name': 'test', 'folder': {'plain': {}}})
-
-        # Test serializing a mid-level struct using a non-root/leaf base struct
-        self.assertEqual(
-            json_compat_obj_encode(bv.StructTree(self.ns.Folder), fo),
-            {'name': 'test', 'plain': {}})
-
         sf = self.ns.SharedFolder(name='stest', owner='id:xyz')
 
         # Test serializing a leaf struct using a root base struct
         self.assertEqual(
             json_compat_obj_encode(bv.StructTree(self.ns.Resource), sf),
-            {'name': 'stest', 'folder': {'shared': {'owner': 'id:xyz'}}})
+            {'.tag': 'folder', '.tag.folder': 'shared', 'name': 'stest', 'owner': 'id:xyz'})
 
         # Test serializing a leaf struct using a non-root/leaf base struct
         self.assertEqual(
             json_compat_obj_encode(bv.StructTree(self.ns.BaseFolder), sf),
-            {'name': 'stest', 'shared': {'owner': 'id:xyz'}})
+            {'.tag': 'folder', '.tag.folder': 'shared', 'name': 'stest', 'owner': 'id:xyz'})
 
-    def test_struct_enumerated_subtypes_json_decode(self):
+        # Test a mistaken attempt to serialize a non-leaf struct
+        bf = self.ns.BaseFolder(name='test')
+        with self.assertRaises(AssertionError) as cm:
+            json_compat_obj_encode(bv.StructTree(self.ns.Resource), bf)
+
+    def test_struct_enumerated_subtypes_decoding(self):
         # Test deserializing a leaf struct from  the root struct
-        fi = self.ns.File(name='test.doc', size=100)
         fi = json_compat_obj_decode(
             bv.StructTree(self.ns.Resource),
-            {'name': 'test.doc', 'file': {'size': 100}})
+            {'.tag': 'file', 'name': 'test.doc', 'size': 100})
         self.assertIsInstance(fi, self.ns.File)
         self.assertEqual(fi.name, 'test.doc')
         self.assertEqual(fi.size, 100)
 
-        # Test deserializing leaf struct with bad type tag
+        # Test deserializing leaf struct with unknown type tag
         with self.assertRaises(bv.ValidationError) as cm:
             json_compat_obj_decode(
                 bv.StructTree(self.ns.Resource),
-                {'name': 'test.doc', 'file': 'bad-value'})
-        self.assertIn("expected object, got string", str(cm.exception))
+                {'.tag': 'unk', 'name': 'test.doc'})
+        self.assertEqual("unknown subtype 'unk'", str(cm.exception))
+
+        # Test deserializing leaf struct with bad JSON type for type tag
+        with self.assertRaises(bv.ValidationError) as cm:
+            json_compat_obj_decode(
+                bv.StructTree(self.ns.Resource),
+                {'.tag': 123, 'name': 'test.doc'})
+        self.assertEqual("expected string, got integer", str(cm.exception))
+
+        # Test deserializing a non-leaf struct
+        # TODO(kelkabany): An improvement would be to notify the user that the
+        # underlying issue is that the tag was not to a leaf struct.
+        with self.assertRaises(bv.ValidationError) as cm:
+            json_compat_obj_decode(
+                bv.StructTree(self.ns.Resource),
+                {'.tag': 'folder', 'name': 'test'})
+        self.assertEqual("unknown subtype 'folder'", str(cm.exception))
+
+        # Test deserializing a leaf struct that is two-levels in the tree deep
+        fo = json_compat_obj_decode(
+            bv.StructTree(self.ns.Resource),
+            {'.tag': 'folder', '.tag.folder': 'plain', 'name': 'test'})
+
+        self.assertIsInstance(fo, self.ns.Folder)
+        self.assertEqual(fo.name, 'test')
+
+        # Test deserializing an unknown leaf in strict mode
+        with self.assertRaises(bv.ValidationError) as cm:
+            json_compat_obj_decode(
+                bv.StructTree(self.ns.Resource),
+                {'.tag': 'folder', '.tag.folder': 'special', 'name': 'test'})
+        self.assertEqual("unknown subtype 'folder.special'", str(cm.exception))
+
+        """
+        bf = json_compat_obj_decode(
+            bv.StructTree(self.ns.Resource),
+            {'.tag': 'folder', '.tag.folder': 'special', 'name': 'test'},
+            strict=False)
+
+        self.assertIsInstance(bf, self.ns.BaseFolder)
+        #self.assertEqual(fo.name, 'test')
 
         # Test deserializing non-leaf struct with bad type tag
         with self.assertRaises(bv.ValidationError) as cm:
@@ -793,6 +953,7 @@ class TestGeneratedPython(unittest.TestCase):
                 bv.StructTree(self.ns.Resource),
                 {'symlink': {}},
                 strict=False))
+        """
 
     def tearDown(self):
         # Clear input and output of babelapi tool after all tests.
